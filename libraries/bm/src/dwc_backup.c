@@ -59,8 +59,26 @@ enum NvramCommState{
 }NvramCommState;
 
 #ifdef SDK_PORT
+#include <stdio.h>
+#include <stdlib.h>
+
 static FILE * s_SIM_dwcbackup_fptr = NULL;
 static const char * s_SIM_DWCBACKUP_FILEPATH = "firmware.bin";
+
+// Open firmware.bin from the current folder. It is copied next to the game
+// by the build. If it is missing, stop with a clear message instead of
+// crashing later on a NULL file.
+static FILE * SIM_OpenDwcBackupFile(const char * mode)
+{
+	FILE * fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, mode);
+	if (fptr == NULL) {
+		fprintf(stderr, "Could not open '%s' in the current folder. "
+			"Start the game from the folder that has %s in it.\n",
+			s_SIM_DWCBACKUP_FILEPATH, s_SIM_DWCBACKUP_FILEPATH);
+		exit(1);
+	}
+	return fptr;
+}
 #endif
 
 BOOL DWCi_BM_GetApInfo(DWCMemPage* buf)
@@ -286,7 +304,7 @@ static BOOL NVRAMm_ExecuteCommand( int nv_state, u32 adr, u16 size, u8 *srcp )
 			  #ifdef SDK_PORT
 			  	nv_sending = TRUE;
 			  	if(s_SIM_dwcbackup_fptr == NULL) {
-					s_SIM_dwcbackup_fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, "rb+");
+					s_SIM_dwcbackup_fptr = SIM_OpenDwcBackupFile("rb+");
 				}
 
 				fseek(s_SIM_dwcbackup_fptr, adr, SEEK_SET);
@@ -303,7 +321,7 @@ static BOOL NVRAMm_ExecuteCommand( int nv_state, u32 adr, u16 size, u8 *srcp )
 					fclose(s_SIM_dwcbackup_fptr);
 					s_SIM_dwcbackup_fptr = NULL;
 				}
-				s_SIM_dwcbackup_fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, "rb+");
+				s_SIM_dwcbackup_fptr = SIM_OpenDwcBackupFile("rb+");
 				nv_sending = TRUE;
 				cbNvram(PXI_FIFO_TAG_NVRAM, 0, 0);
 			  #else
@@ -314,7 +332,7 @@ static BOOL NVRAMm_ExecuteCommand( int nv_state, u32 adr, u16 size, u8 *srcp )
 			  case COMM_WR:
 			  #ifdef SDK_PORT
 			  	if(s_SIM_dwcbackup_fptr == NULL) {
-					s_SIM_dwcbackup_fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, "rb+");
+					s_SIM_dwcbackup_fptr = SIM_OpenDwcBackupFile("rb+");
 				}
 				fseek(s_SIM_dwcbackup_fptr, adr, SEEK_SET);
 				fwrite(srcp, 1, size, s_SIM_dwcbackup_fptr);
@@ -343,7 +361,7 @@ static BOOL NVRAMm_ExecuteCommand( int nv_state, u32 adr, u16 size, u8 *srcp )
 					fclose(s_SIM_dwcbackup_fptr);
 					s_SIM_dwcbackup_fptr = NULL;
 				}
-				s_SIM_dwcbackup_fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, "rb+");
+				s_SIM_dwcbackup_fptr = SIM_OpenDwcBackupFile("rb+");
 				nv_sending = TRUE;
 				cbNvram(PXI_FIFO_TAG_NVRAM, 0, 0);
 			  #else
@@ -357,7 +375,7 @@ static BOOL NVRAMm_ExecuteCommand( int nv_state, u32 adr, u16 size, u8 *srcp )
 					fclose(s_SIM_dwcbackup_fptr);
 					s_SIM_dwcbackup_fptr = NULL;
 				}
-				s_SIM_dwcbackup_fptr = fopen(s_SIM_DWCBACKUP_FILEPATH, "rb");
+				s_SIM_dwcbackup_fptr = SIM_OpenDwcBackupFile("rb");
 				nv_sending = TRUE;
 				cbNvram(PXI_FIFO_TAG_NVRAM, 0, 0);
 			  #else
